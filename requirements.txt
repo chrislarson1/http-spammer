@@ -1,0 +1,5 @@
+aiosonic==0.9.7
+chardet==4.0.0
+numpy>=1.18.1
+orjson>=3.0.2
+uvloop==0.14.0
