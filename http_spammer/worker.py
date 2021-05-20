@@ -28,6 +28,13 @@ __all__ = ['spam_runner']
 RequestType = Union[GetRequest, BodyRequest]
 
 
+def run(pipe, requests_batch, rps, spammer):
+    responses, timestamps = spammer().run(
+        requests_batch, requests_per_second=rps)
+    pipe.send((responses, timestamps))
+    pipe.close()
+
+
 def spam_runner(num_workers: int,
                 requests: List[RequestType],
                 requests_per_second: int):
@@ -55,12 +62,6 @@ def spam_runner(num_workers: int,
         if i == num_workers - 1:
             N += len(requests) % num_workers
         load_requests.append([requests.pop() for _ in range(N)])
-
-    def run(pipe, requests_batch, rps, spammer):
-        responses, timestamps = spammer().run(
-            requests_batch, requests_per_second=rps)
-        pipe.send((responses, timestamps))
-        pipe.close()
 
     processes = []
     connections = []
