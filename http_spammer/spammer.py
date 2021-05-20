@@ -22,7 +22,7 @@ import uvloop
 import orjson as json
 from aiosonic import Timeouts, HTTPClient
 
-from http_spammer.requests import SYNC_REQUEST_FN, GetRequest, BodyRequest
+from http_spammer.request import SYNC_REQUEST_FN, GetRequest, BodyRequest
 from http_spammer.timing import now, CLOCK, Timestamp
 
 __all__ = ['LoadSpammer', 'LatencySpamer']

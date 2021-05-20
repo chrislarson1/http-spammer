@@ -21,11 +21,12 @@ import requests as Requests
 
 
 SYNC_REQUEST_FN = dict(
-        get=Requests.get,
-        put=Requests.put,
-        post=Requests.post,
-        patch=Requests.patch,
-        delete=Requests.delete)
+    get=Requests.get,
+    put=Requests.put,
+    post=Requests.post,
+    patch=Requests.patch,
+    delete=Requests.delete
+)
 
 
 class HttpGetMethod(str, Enum):

@@ -19,7 +19,7 @@ from typing import List, Union
 import numpy as np
 
 from http_spammer.spammer import LoadSpammer, LatencySpamer
-from http_spammer.requests import GetRequest, BodyRequest
+from http_spammer.request import GetRequest, BodyRequest
 from http_spammer.metrics import get_result
 
 __all__ = ['spam_runner']

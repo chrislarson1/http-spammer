@@ -16,7 +16,7 @@
 import pytest
 
 from http_spammer.spammer import LoadSpammer, LatencySpamer
-from http_spammer.requests import GetRequest, BodyRequest
+from http_spammer.request import GetRequest, BodyRequest
 
 
 @pytest.fixture(autouse=True)
