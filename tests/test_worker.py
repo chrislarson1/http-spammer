@@ -33,3 +33,4 @@ def test_spam_runner(num_workers,
     result = spam_runner(num_workers, requests, requests_per_second)
     assert result.metrics.server_requests_per_second / \
            requests_per_second >= latency_threshold
+    assert len(result.responses) == num_requests

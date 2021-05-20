@@ -101,15 +101,17 @@ def spam_runner(num_workers: int,
     proc.join()
     parent_conn.close()
 
-    responses = list(load_responses)
+    responses = []
+    for resp in load_responses:
+        responses.extend(resp)
     latency_responses = list(latency_responses)
     for idx in latency_idxs[::-1]:
         responses.insert(idx, latency_responses.pop())
-
     timestamps = []
     for ts in load_timestamps:
         timestamps.extend(ts)
     timestamps.extend(latency_timestamps)
     timestamps = list(sorted(timestamps,
                              key=lambda tup: tup[0]))
+
     return get_result(responses, timestamps, latency_timestamps)
