@@ -25,11 +25,7 @@ from aiosonic import Timeouts, HTTPClient
 from http_spammer.request import SYNC_REQUEST_FN, GetRequest, BodyRequest
 from http_spammer.timing import now, CLOCK, Timestamp
 
-__all__ = ['LoadSpammer', 'LatencySpamer']
-
-
-MAX_RPS = 5000
-MIN_REQ = 100
+__all__ = ['LoadSpammer', 'LatencySpammer']
 
 
 class LoadTestTask:
@@ -38,22 +34,26 @@ class LoadTestTask:
     response: Union[asyncio.Future, dict]
 
 
-def wait(start_t, index, num_requests, test_duration):
-    requests_ratio = index / num_requests
-    time_ratio = (now() - start_t) / test_duration
-    return requests_ratio > time_ratio
+def throttle(start_t, index, duration, rps_start, rps_end):
+    t = now()
+    rps_target = rps_start + \
+                 (rps_end - rps_start) * ((t - start_t) / duration)
+    requests_target = (t - start_t) * (rps_start + rps_target) / 2
+    return index > requests_target
 
 
 class Spammer(ABC):
     @abstractmethod
     def run(self,
             requests: List[Union[GetRequest, BodyRequest]],
-            requests_per_second: float
+            duration: float,
+            rps_start: float,
+            rps_end: float,
             ) -> Tuple[List[dict], List[Timestamp]]:
         pass
 
 
-class LoadSpammer:
+class LoadSpammer(Spammer):
 
     def __init__(self):
         uvloop.install()
@@ -80,8 +80,7 @@ class LoadSpammer:
             request.timeouts = Timeouts(sock_connect=request.timeouts[0],
                                         sock_read=request.timeouts[1])
         args = request.dict()
-        for arg in ('method', 'num_queries'):
-            args.pop(arg, None)
+        args.pop('method')
         response = await self.methods[request.method.lower()](**args)
         task.response = json.loads(await response.content())
         task.end_time = now()
@@ -96,21 +95,20 @@ class LoadSpammer:
         while len(self._tasks) < self._n_requests:
             await asyncio.sleep(CLOCK)
 
-    async def __run_async(self, requests, load_duration):
+    async def __run_async(self, requests, duration, rps_start, rps_end):
         start_t = now()
         for idx, request in enumerate(requests):
-            while wait(start_t, idx, self._n_requests, load_duration):
+            while throttle(start_t, idx, duration, rps_start, rps_end):
                 await asyncio.sleep(CLOCK)
             asyncio.ensure_future(
                 self.__send(request))
         await self.__collect()
 
-    def run(self, requests, requests_per_second):
+    def run(self, requests, duration, rps_start, rps_end):
         self.__flush(len(requests))
-        load_duration = len(requests) / requests_per_second
         self.loop.run_until_complete(
             asyncio.ensure_future(
-                self.__run_async(requests, load_duration)))
+                self.__run_async(requests, duration, rps_start, rps_end)))
         responses, timestamps = zip(*sorted(
             [(task.response, (task.start_time, task.end_time))
              for task in self._tasks],
@@ -118,20 +116,18 @@ class LoadSpammer:
         return responses, timestamps
 
 
-class LatencySpamer:
+class LatencySpammer(Spammer):
 
-    def run(self, requests, requests_per_second):
+    def run(self, requests, duration, rps_start, rps_end):
         t = now()
-        test_duration = len(requests) / requests_per_second
         tasks = []
         while requests:
             request = requests.pop()
             task = LoadTestTask()
             args = request.dict()
-            for arg in ('method', 'num_queries'):
-                args.pop(arg, None)
+            args.pop('method')
             args['timeout'] = args.pop('timeouts')
-            while wait(t, len(tasks), len(tasks) + len(requests), test_duration):
+            while throttle(t, len(tasks), duration, rps_start, rps_end):
                 time.sleep(CLOCK)
             task.start_time = now()
             response = SYNC_REQUEST_FN[request.method.lower()](**args)

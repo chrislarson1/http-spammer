@@ -13,54 +13,57 @@
 # implied. See the License for the specific language governing
 # permissions and limitations under the License.
 # -------------------------------------------------------------------
-from multiprocessing import Process, Pipe, cpu_count
+from multiprocessing import Process, Pipe
 from typing import List, Union
 
 import numpy as np
 
-from http_spammer.spammer import LoadSpammer, LatencySpamer
+from http_spammer.spammer import LoadSpammer, LatencySpammer
 from http_spammer.request import GetRequest, BodyRequest
 from http_spammer.metrics import get_result
 
-__all__ = ['spam_runner']
+__all__ = ['spam_runner', 'LAT_RPS']
+
+
+LAT_RPS = 1.0
 
 
 RequestType = Union[GetRequest, BodyRequest]
 
 
-def run(pipe, requests_batch, rps, spammer):
+def run(pipe, requests_batch, duration, rps_start, rps_end, spammer):
     responses, timestamps = spammer().run(
-        requests_batch, requests_per_second=rps)
+        requests_batch, duration, rps_start, rps_end)
     pipe.send((responses, timestamps))
     pipe.close()
 
 
 def spam_runner(num_workers: int,
                 requests: List[RequestType],
-                requests_per_second: int):
+                duration: float,
+                rps_start: int,
+                rps_end: int):
 
-    test_duration = len(requests) / requests_per_second
+    requests_total = len(requests)
 
-    # Latency requests
-    num_lat_requests = max(10, int(0.05 * len(requests)))
+    # Latency samples
+    num_lat_requests = int(LAT_RPS * duration)
     latency_requests = []
     latency_idxs = []
     for _ in range(num_lat_requests):
         idx = np.random.choice(list(range(len(requests))), size=1)[0]
         latency_requests.append(requests.pop(idx))
         latency_idxs.append(idx)
-    latency_wrkr_rps = num_lat_requests / test_duration
 
-    # Load requests
-    if num_workers >= cpu_count() - 1:
-        num_workers = cpu_count() - 2
-    load_wrkr_rps = (len(requests) / test_duration) / num_workers
+    # Throughput samples
+    load_wrkr_rps_start = ((len(requests) / requests_total) * rps_start) / num_workers
+    load_wrkr_rps_end = ((len(requests) / requests_total) * rps_end) / num_workers
     req_per_wrkr = len(requests) // num_workers
     load_requests = []
     for i in range(num_workers):
         N = req_per_wrkr
         if i == num_workers - 1:
-            N += len(requests) % num_workers
+            N += num_workers - (len(requests) % num_workers)
         load_requests.append([requests.pop() for _ in range(N)])
 
     processes = []
@@ -70,7 +73,9 @@ def spam_runner(num_workers: int,
         proc = Process(target=run,
                        args=(child_conn,
                              load_requests.pop(0),
-                             load_wrkr_rps,
+                             duration,
+                             load_wrkr_rps_start,
+                             load_wrkr_rps_end,
                              LoadSpammer))
         proc.start()
         processes.append(proc)
@@ -80,8 +85,10 @@ def spam_runner(num_workers: int,
     proc = Process(target=run,
                    args=(child_conn,
                          latency_requests,
-                         latency_wrkr_rps,
-                         LatencySpamer))
+                         duration,
+                         LAT_RPS,
+                         LAT_RPS,
+                         LatencySpammer))
     proc.start()
 
     pending = list(range(len(processes)))

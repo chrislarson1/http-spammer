@@ -22,7 +22,9 @@ def test_spam_runner(num_workers,
                      get_request,
                      body_request,
                      num_requests,
-                     requests_per_second,
+                     duration,
+                     rps_start,
+                     rps_end,
                      latency_threshold):
     requests = []
     for i in range(num_requests):
@@ -30,7 +32,7 @@ def test_spam_runner(num_workers,
         if getattr(req, 'data', None):
             req.method = np.random.choice(('PUT', 'POST', 'PATCH', 'DELETE'))
         requests.append(req)
-    result = spam_runner(num_workers, requests, requests_per_second)
+    result = spam_runner(num_workers, requests, duration, rps_start, rps_end)
     assert result.metrics.server_requests_per_second / \
-           requests_per_second >= latency_threshold
+           ((rps_start + rps_end) / 2) >= latency_threshold
     assert len(result.responses) == num_requests

@@ -15,7 +15,8 @@
 # -------------------------------------------------------------------
 import pytest
 
-from http_spammer.spammer import LoadSpammer, LatencySpamer
+from http_spammer import TestConfig, load_from_file
+from http_spammer.spammer import LoadSpammer, LatencySpammer
 from http_spammer.request import GetRequest, BodyRequest
 
 
@@ -25,8 +26,23 @@ def num_requests():
 
 
 @pytest.fixture(autouse=True)
-def requests_per_second():
-    return 25
+def rps_static():
+    return 50
+
+
+@pytest.fixture(autouse=True)
+def rps_start(rps_static):
+    return rps_static - 25
+
+
+@pytest.fixture(autouse=True)
+def rps_end(rps_static):
+    return rps_static + 25
+
+
+@pytest.fixture(autouse=True)
+def duration(num_requests, rps_static):
+    return num_requests / rps_static
 
 
 @pytest.fixture(autouse=True)
@@ -40,18 +56,33 @@ def num_workers():
 
 
 @pytest.fixture(autouse=True)
-def load_test():
+def load_spammer():
     return LoadSpammer()
 
 
 @pytest.fixture(autouse=True)
-def latency_test():
-    return LatencySpamer()
+def latency_spammer():
+    return LatencySpammer()
 
 
 @pytest.fixture(autouse=True)
 def test_url():
     return 'http://httpbin.org/anything'
+
+
+@pytest.fixture(autouse=True)
+def test_file():
+    return 'tests/test-config.yaml'
+
+
+@pytest.fixture(autouse=True)
+def test_file_url():
+    return 'https://raw.githubusercontent.com/chrislarson1/http-spammer/main/tests/test-config.yaml'
+
+
+@pytest.fixture(autouse=True)
+def test_config(test_file):
+    return TestConfig(**load_from_file(test_file))
 
 
 @pytest.fixture(autouse=True)

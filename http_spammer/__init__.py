@@ -14,14 +14,18 @@
 # permissions and limitations under the License.
 # -------------------------------------------------------------------
 import re
-import sys
 import yaml
 from typing import List, Union
+from multiprocessing import cpu_count
 
 import requests
+import numpy as np
 from pydantic import BaseModel
 
 from http_spammer.request import GetRequest, BodyRequest
+from http_spammer.contraints import MAX_WRKR_RPS, MIN_RPS, \
+    MIN_SEG_DUR, MIN_SEG_REQ
+from http_spammer.worker import spam_runner, LAT_RPS
 
 
 class SegmentType(BaseModel):
@@ -35,7 +39,7 @@ class TestConfig(BaseModel):
     cycles: int
     segments: List[SegmentType]
     requests: List[Union[GetRequest, BodyRequest]]
-
+    numClients: int = 1
 
 
 url_pattern = "(https?:\/\/(?:www\.|(?!www))[a-zA-Z0-9][a-zA-Z0-9-]+[a-zA-Z0-9]" \
@@ -43,26 +47,42 @@ url_pattern = "(https?:\/\/(?:www\.|(?!www))[a-zA-Z0-9][a-zA-Z0-9-]+[a-zA-Z0-9]"
               ":\/\/(?:www\.|(?!www))[a-zA-Z0-9]+\.[^\s]{2,}|www\.[a-zA-Z0-9]+\.[^\s]{2,})"
 
 
+def validate_test_config(config: TestConfig):
+    if config.numClients >= cpu_count() - 1:
+        raise RuntimeError(f'numClient exceeds available cpus ({cpu_count()})')
+    max_rps = max([max(seg.startRps, seg.endRps) / config.numClients
+                   for seg in config.segments])
+    if max_rps > MAX_WRKR_RPS:
+        raise RuntimeError(
+            f'max segment RPS exceeds max allowable ({max_rps} vs {MAX_WRKR_RPS})')
+    if min([seg.duration for seg in config.segments]) < MIN_SEG_DUR:
+        raise RuntimeError(f'segment duration must be >= {MIN_SEG_DUR})')
+
+
+def load_from_file(fp: str):
+    return yaml.load(open(fp, 'r'), Loader=yaml.FullLoader)
+
+
+def load_from_url(url: str):
+    return yaml.load(requests.get(url).text, Loader=yaml.FullLoader)
+
+
 class LoadTest:
 
     def __init__(self, test_file_or_url: str):
         is_url = re.match(url_pattern, test_file_or_url)
-        print(is_url)
         if is_url:
-            try:
-                spec = yaml.load(requests.get(test_file_or_url).text,
-                                 Loader=yaml.FullLoader)
-            except Exception as exc:
-                print(exc)
-                sys.exit(1)
+            spec = load_from_url(test_file_or_url)
         else:
-            try:
-                spec = yaml.load(open(test_file_or_url, 'r'),
-                                 Loader=yaml.FullLoader)
-            except Exception as exc:
-                print(exc)
-                sys.exit(1)
+            spec = load_from_file(test_file_or_url)
         self.config = TestConfig(**spec)
+        validate_test_config(self.config)
 
     def run(self):
-        pass
+        segment_requests = []
+        for segment in self.config.segments:
+            N = int(((segment.startRps + segment.endRps) / 2) * segment.duration)
+            segment_requests.append(
+                np.random.choice(self.config.requests, size=N).tolist())
+        for segment, requests in zip(self.config.segments, segment_requests):
+            pass

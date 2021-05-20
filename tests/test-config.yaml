@@ -1,13 +1,11 @@
-name: "test-case-X"
-cycles: 200
+name: "test-spammer"
+numClients: 1
+cycles: 1
 segments:
-  - startRps: 50
-    endRps: 50
-    duration: 30
-  - startRps: 50
-    endRps: 100
+  - startRps: 25
+    endRps: 25
     duration: 10
-  - startRps: 100
+  - startRps: 25
     endRps: 50
     duration: 10
 requests:

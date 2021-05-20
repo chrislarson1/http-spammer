@@ -14,7 +14,7 @@
 # permissions and limitations under the License.
 # -------------------------------------------------------------------
 from enum import Enum
-from dataclasses import dataclass, asdict
+from pydantic import BaseModel
 from typing import Dict, List, Union
 
 import requests as Requests
@@ -45,25 +45,18 @@ class HttpBodyMethod(str, Enum):
     delete = DELETE
 
 
-@dataclass()
-class BaseRequest:
+class BaseRequest(BaseModel):
     url: str
     headers: Dict[str, str] = None
     params: Dict[str, str] = None
     verify: bool = False
     timeouts: List[float] = None
 
-    def dict(self):
-        return asdict(self)
 
-
-@dataclass()
 class GetRequest(BaseRequest):
     method: HttpGetMethod = 'GET'
 
 
-@dataclass()
 class BodyRequest(BaseRequest):
     method: HttpBodyMethod = 'POST'
     data: Union[dict, list, str, bytes] = None
-    num_queries: int = None

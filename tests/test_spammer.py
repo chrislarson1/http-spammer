@@ -15,56 +15,102 @@
 # -------------------------------------------------------------------
 import pytest
 
-from http_spammer.spammer import LoadSpammer, LatencySpamer
+from http_spammer.spammer import LoadSpammer, LatencySpammer, throttle
+from http_spammer.timing import now
+from http_spammer import LAT_RPS
+
+
+def test_throttle_static_load_no_wait():
+    wait = throttle(now() - 5, 5, 10, 1, 1)
+    assert not wait
+
+
+def test_throttle_static_load_wait():
+    wait = throttle(now() - 5 + 0.001, 5, 10, 1, 1)
+    assert wait
+
+
+def test_throttle_dynamic_load_no_wait():
+    wait = throttle(now() - 5, 2.5, 10, 0, 2)
+    assert not wait
+
+
+def test_throttle_dynamic_load_wait():
+    wait = throttle(now() - 5 + 0.001, 2.5, 10, 0, 2)
+    assert wait
 
 
 def test_load_get(get_request,
                   num_requests,
-                  requests_per_second,
+                  duration,
+                  rps_static,
+                  rps_start,
+                  rps_end,
                   latency_threshold,
-                  load_test: LoadSpammer):
-    responses, timestamps = load_test.run(requests=[get_request] * num_requests,
-                                          requests_per_second=requests_per_second)
+                  load_spammer: LoadSpammer):
+    responses, timestamps = load_spammer.run(requests=[get_request] * num_requests,
+                                             duration=duration,
+                                             rps_start=rps_static,
+                                             rps_end=rps_static)
     rps = len(responses) / (timestamps[-1][1] - timestamps[0][0])
-    assert rps / requests_per_second >= latency_threshold
+    assert rps / rps_static >= latency_threshold
+    responses, timestamps = load_spammer.run(requests=[get_request] * num_requests,
+                                             duration=duration,
+                                             rps_start=rps_start,
+                                             rps_end=rps_end)
+    rps = len(responses) / (timestamps[-1][1] - timestamps[0][0])
+    assert rps / rps_static >= latency_threshold
 
 
 @pytest.mark.parametrize('method', ('POST', 'PUT', 'PATCH', 'DELETE'))
 def test_load_with_body(method,
                         body_request,
                         num_requests,
-                        requests_per_second,
+                        duration,
+                        rps_static,
+                        rps_start,
+                        rps_end,
                         latency_threshold,
-                        load_test: LoadSpammer):
+                        load_spammer: LoadSpammer):
     request = body_request
     request.method = method
-    responses, timestamps = load_test.run(requests=[request] * num_requests,
-                                          requests_per_second=requests_per_second)
-    rps = len(responses) / (timestamps[-1][1] - timestamps[0][0])
-    assert rps / requests_per_second >= latency_threshold
+    responses, timestamps = load_spammer.run(requests=[request] * num_requests,
+                                             duration=duration,
+                                             rps_start=rps_static,
+                                             rps_end=rps_static)
+    rps_measured = len(responses) / (timestamps[-1][1] - timestamps[0][0])
+    assert rps_measured / rps_static >= latency_threshold
+    responses, timestamps = load_spammer.run(requests=[request] * num_requests,
+                                             duration=duration,
+                                             rps_start=rps_start,
+                                             rps_end=rps_end)
+    rps_measured = len(responses) / (timestamps[-1][1] - timestamps[0][0])
+    assert rps_measured / rps_static >= latency_threshold
 
 
 def test_latency_get(get_request,
-                     num_requests,
-                     requests_per_second,
+                     duration,
                      latency_threshold,
-                     latency_test: LatencySpamer):
-    responses, timestamps = latency_test.run(requests=[get_request] * num_requests,
-                                             requests_per_second=requests_per_second)
+                     latency_spammer: LatencySpammer):
+    responses, timestamps = latency_spammer.run(requests=[get_request] * 10,
+                                                duration=duration,
+                                                rps_start=LAT_RPS,
+                                                rps_end=LAT_RPS)
     rps = len(responses) / (timestamps[-1][1] - timestamps[0][0])
-    assert rps / requests_per_second >= latency_threshold
+    assert rps / LAT_RPS >= latency_threshold
 
 
 @pytest.mark.parametrize('method', ('POST', 'PUT', 'PATCH', 'DELETE'))
 def test_latency_with_body(method,
                            body_request,
-                           num_requests,
-                           requests_per_second,
+                           duration,
                            latency_threshold,
-                           latency_test: LatencySpamer):
+                           latency_spammer: LatencySpammer):
     request = body_request
     request.method = method
-    responses, timestamps = latency_test.run(requests=[request] * num_requests,
-                                             requests_per_second=requests_per_second)
+    responses, timestamps = latency_spammer.run(requests=[request] * 2,
+                                                duration=duration,
+                                                rps_start=LAT_RPS,
+                                                rps_end=LAT_RPS)
     rps = len(responses) / (timestamps[-1][1] - timestamps[0][0])
-    assert rps / requests_per_second >= latency_threshold
+    assert rps / LAT_RPS >= latency_threshold
