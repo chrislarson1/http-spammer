@@ -56,12 +56,12 @@ def test_latency_get(get_request,
 
 
 @pytest.mark.parametrize('method', ('POST', 'PUT', 'PATCH', 'DELETE'))
-def test_load_with_body(method,
-                        body_request,
-                        num_requests,
-                        requests_per_second,
-                        latency_threshold,
-                        latency_test: LatencySpamer):
+def test_latency_with_body(method,
+                           body_request,
+                           num_requests,
+                           requests_per_second,
+                           latency_threshold,
+                           latency_test: LatencySpamer):
     request = body_request
     request.method = method
     responses, timestamps = latency_test.run(requests=[request] * num_requests,
