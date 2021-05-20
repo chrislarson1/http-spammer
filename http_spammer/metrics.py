@@ -20,7 +20,7 @@ import numpy as np
 
 from http_spammer.timing import Timestamp
 
-__all__ = ['get_result']
+__all__ = ['get_result', 'LoadTestResult']
 
 
 @dataclass()

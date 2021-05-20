@@ -26,6 +26,7 @@ from http_spammer.request import GetRequest, BodyRequest
 from http_spammer.contraints import MAX_WRKR_RPS, MIN_RPS, \
     MIN_SEG_DUR, MIN_SEG_REQ
 from http_spammer.worker import spam_runner, LAT_RPS
+from http_spammer.metrics import LoadTestResult
 
 
 class SegmentType(BaseModel):
@@ -78,11 +79,19 @@ class LoadTest:
         self.config = TestConfig(**spec)
         validate_test_config(self.config)
 
-    def run(self):
+    def run(self) -> List[LoadTestResult]:
         segment_requests = []
         for segment in self.config.segments:
             N = int(((segment.startRps + segment.endRps) / 2) * segment.duration)
             segment_requests.append(
                 np.random.choice(self.config.requests, size=N).tolist())
+        results = []
         for segment, requests in zip(self.config.segments, segment_requests):
-            pass
+            results.append(
+                spam_runner(self.config.numClients,
+                            requests,
+                            segment.duration,
+                            segment.startRps,
+                            segment.endRps)
+            )
+        return results

@@ -61,9 +61,10 @@ def spam_runner(num_workers: int,
     req_per_wrkr = len(requests) // num_workers
     load_requests = []
     for i in range(num_workers):
-        N = req_per_wrkr
-        if i == num_workers - 1:
-            N += num_workers - (len(requests) % num_workers)
+        if i < num_workers - 1:
+            N = req_per_wrkr
+        else:
+            N = len(requests)
         load_requests.append([requests.pop() for _ in range(N)])
 
     processes = []

@@ -47,7 +47,7 @@ def duration(num_requests, rps_static):
 
 @pytest.fixture(autouse=True)
 def latency_threshold():
-    return 0.5
+    return 0.7
 
 
 @pytest.fixture(autouse=True)

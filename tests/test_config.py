@@ -58,11 +58,13 @@ def test_config_meets_max_rps(test_config):
 
 
 def test_config_exceeds_max_rps(test_config):
-    test_config.segments[0].startRps = MAX_WRKR_RPS + 1
+    test_config.segments[0].startRps = \
+        MAX_WRKR_RPS * test_config.numClients + 1
     with pytest.raises(RuntimeError):
         validate_test_config(test_config)
-    test_config.numClients = 2
-    test_config.segments[0].startRps = MAX_WRKR_RPS * 2 + 1
+    test_config.numClients += 1
+    test_config.segments[0].startRps = \
+        MAX_WRKR_RPS * test_config.numClients + 1
     with pytest.raises(RuntimeError):
         validate_test_config(test_config)
 
