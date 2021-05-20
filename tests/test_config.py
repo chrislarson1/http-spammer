@@ -13,12 +13,34 @@
 # implied. See the License for the specific language governing
 # permissions and limitations under the License.
 # -------------------------------------------------------------------
+import re
 from multiprocessing import cpu_count
 
 import pytest
 
+from http_spammer import url_pattern
 from http_spammer.contraints import MAX_WRKR_RPS
 from http_spammer import TestConfig, load_from_url, validate_test_config
+
+
+def test_url_match():
+    urls = ('http://x.com',
+            'http://www.x.com'
+            'https://x.com',
+            'https://www.x.com',
+            'www.x.com')
+    for url in urls:
+        assert re.match(url_pattern, url)
+
+
+def test_no_url_match():
+    urls = ('f.yaml',
+            '/x/f.yaml'
+            '~/f.yaml',
+            '~/x/f.yaml',
+            '../f.yaml')
+    for url in urls:
+        assert not re.match(url_pattern, url)
 
 
 def test_load_config_from_url(test_file_url):
