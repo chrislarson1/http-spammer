@@ -1,0 +1,29 @@
+name: "test-case-X"
+cycles: 200
+segments:
+  - startRps: 50
+    endRps: 50
+    duration: 30
+  - startRps: 50
+    endRps: 100
+    duration: 10
+  - startRps: 100
+    endRps: 50
+    duration: 10
+requests:
+- url: "http://httpbin.org/anything"
+  method: "GET"
+  headers:
+    Content-type: "text/plain"
+  params:
+    foo: "bar"
+  verify: false
+  timeouts:
+    - 2.0
+    - 10.0
+- url: "http://httpbin.org/anything"
+  method: "POST"
+  headers:
+    Content-type: "application/json"
+  data:
+    foo: "bar"
