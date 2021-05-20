@@ -13,19 +13,23 @@
 # implied. See the License for the specific language governing
 # permissions and limitations under the License.
 # -------------------------------------------------------------------
-import time
-from typing import Callable, Tuple
+import numpy as np
 
-__all__ = ['Timestamp', 'CLOCK', 'now', 'now']
-
-
-#: start-time,endtime tuple
-Timestamp = Tuple[float]
+from http_spammer.worker import spam_runner
 
 
-#: Sleep interval for loops
-CLOCK = 1e-3
-
-
-#: Get current time
-now: Callable[[], float] = lambda: float(time.monotonic())
+def test_spam_runner(num_workers,
+                     get_request,
+                     body_request,
+                     num_requests,
+                     requests_per_second,
+                     latency_threshold):
+    requests = []
+    for i in range(num_requests):
+        req = np.random.choice((get_request, body_request))
+        if getattr(req, 'data', None):
+            req.method = np.random.choice(('PUT', 'POST', 'PATCH', 'DELETE'))
+        requests.append(req)
+    result = spam_runner(num_workers, requests, requests_per_second)
+    assert result.metrics.server_requests_per_second / \
+           requests_per_second >= latency_threshold

@@ -15,14 +15,53 @@
 # -------------------------------------------------------------------
 import pytest
 
-from http_spammer.main import LoadTest
+from http_spammer.spammer import LoadSpammer, LatencySpamer
+from http_spammer.requests import GetRequest, BodyRequest
+
+
+@pytest.fixture(autouse=True)
+def num_requests():
+    return 100
+
+
+@pytest.fixture(autouse=True)
+def requests_per_second():
+    return 25
+
+
+@pytest.fixture(autouse=True)
+def latency_threshold():
+    return 0.5
+
+
+@pytest.fixture(autouse=True)
+def num_workers():
+    return 3
 
 
 @pytest.fixture(autouse=True)
 def load_test():
-    return LoadTest()
+    return LoadSpammer()
+
+
+@pytest.fixture(autouse=True)
+def latency_test():
+    return LatencySpamer()
 
 
 @pytest.fixture(autouse=True)
 def test_url():
     return 'http://httpbin.org/anything'
+
+
+@pytest.fixture(autouse=True)
+def get_request(test_url):
+    return GetRequest(url=test_url,
+                      headers={'Content-type': 'text/plain'})
+
+
+@pytest.fixture(autouse=True)
+def body_request(test_url):
+    return BodyRequest(url=test_url,
+                       headers={'Content-type': 'application/json'},
+                       data={'foo': 'bar'})

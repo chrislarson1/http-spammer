@@ -14,9 +14,13 @@
 # permissions and limitations under the License.
 # -------------------------------------------------------------------
 from dataclasses import dataclass, asdict
-from typing import List, Tuple
+from typing import List
 
 import numpy as np
+
+from http_spammer.timing import Timestamp
+
+__all__ = ['get_result']
 
 
 @dataclass()
@@ -26,6 +30,7 @@ class LoadTestMetrics:
     test_duration_seconds: float
     client_requests_per_second: float
     server_requests_per_second: float
+    server_queries_per_second: float
     server_latency_mean_seconds: float
     server_latency_std_seconds: float
     server_latency_max_seconds: float
@@ -42,17 +47,22 @@ class LoadTestMetrics:
         return cls(**metrics_dict)
 
     @classmethod
-    def build(cls, timestamps: List[Tuple[float]]):
+    def build(cls,
+              timestamps: List[Timestamp],
+              latency_timestamps: List[Timestamp],
+              num_queries: int = None):
         num_requests = len(timestamps)
+        num_queries = num_queries or num_requests
         send_duration = round(float(timestamps[-1][0] - timestamps[0][0]), 5)
         test_duration = round(float(timestamps[-1][1] - timestamps[0][0]), 5)
-        client_load_measured = int(num_requests / send_duration)
-        latencies = [tstamp[1] - tstamp[0] for tstamp in timestamps]
+        client_load_measured = round(num_requests / send_duration, 5)
+        latencies = [tstamp[1] - tstamp[0] for tstamp in latency_timestamps]
         return cls(
             test_duration_seconds=test_duration,
             num_requests=num_requests,
             client_requests_per_second=client_load_measured,
-            server_requests_per_second=int(num_requests / test_duration),
+            server_requests_per_second=round(num_requests / test_duration, 5),
+            server_queries_per_second=round(num_queries / test_duration, 5),
             server_latency_mean_seconds=round(np.mean(latencies), 9),
             server_latency_std_seconds=round(np.std(latencies), 9),
             server_latency_max_seconds=round(max(latencies), 9),
@@ -93,3 +103,13 @@ class LoadTestResult:
         return cls(metrics=metrics,
                    responses=result_dict['responses'],
                    num_errors=result_dict['num_errors'])
+
+
+def get_result(responses: List[dict],
+               timestamps: List[Timestamp],
+               latency_timestamps: List[Timestamp],
+               num_queries: int = None):
+    metrics = LoadTestMetrics.build(timestamps,
+                                    latency_timestamps,
+                                    num_queries=num_queries)
+    return LoadTestResult.build(metrics=metrics, responses=responses)

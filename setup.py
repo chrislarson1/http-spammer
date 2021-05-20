@@ -43,6 +43,7 @@ setup(
         'chardet==4.0.0',
         'numpy>=1.18.1',
         'orjson>=3.0.2',
+        'requests==2.25.1',
         'uvloop==0.14.0',
     ],
     classifiers=[

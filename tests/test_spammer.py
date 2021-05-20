@@ -13,49 +13,58 @@
 # implied. See the License for the specific language governing
 # permissions and limitations under the License.
 # -------------------------------------------------------------------
-from http_spammer.main import HttpRequest, LoadTest
+import pytest
+
+from http_spammer.spammer import LoadSpammer, LatencySpamer
 
 
-def test_http_loadtest_get(test_url: str, load_test: LoadTest):
-    message = HttpRequest(method='GET')
-    rps = 25
-    result = load_test.run(test_url,
-                           messages=[message] * 100,
-                           requests_per_second=rps)
-    assert result.metrics.server_requests_per_second / rps > 0.85
+def test_load_get(get_request,
+                  num_requests,
+                  requests_per_second,
+                  latency_threshold,
+                  load_test: LoadSpammer):
+    responses, timestamps = load_test.run(requests=[get_request] * num_requests,
+                                          requests_per_second=requests_per_second)
+    rps = len(responses) / (timestamps[-1][1] - timestamps[0][0])
+    assert rps / requests_per_second >= latency_threshold
 
 
-def test_http_loadtest_post(test_url: str, load_test: LoadTest):
-    message = HttpRequest(method='POST', data={'key': 'value'})
-    rps = 25
-    result = load_test.run(test_url,
-                           messages=[message] * 100,
-                           requests_per_second=rps)
-    assert result.metrics.server_requests_per_second / rps > 0.85
+@pytest.mark.parametrize('method', ('POST', 'PUT', 'PATCH', 'DELETE'))
+def test_load_with_body(method,
+                        body_request,
+                        num_requests,
+                        requests_per_second,
+                        latency_threshold,
+                        load_test: LoadSpammer):
+    request = body_request
+    request.method = method
+    responses, timestamps = load_test.run(requests=[request] * num_requests,
+                                          requests_per_second=requests_per_second)
+    rps = len(responses) / (timestamps[-1][1] - timestamps[0][0])
+    assert rps / requests_per_second >= latency_threshold
 
 
-def test_http_loadtest_put(test_url: str, load_test: LoadTest):
-    message = HttpRequest(method='PUT', data={'key': 'value'})
-    rps = 25
-    result = load_test.run(test_url,
-                           messages=[message] * 100,
-                           requests_per_second=rps)
-    assert result.metrics.server_requests_per_second / rps > 0.85
+def test_latency_get(get_request,
+                     num_requests,
+                     requests_per_second,
+                     latency_threshold,
+                     latency_test: LatencySpamer):
+    responses, timestamps = latency_test.run(requests=[get_request] * num_requests,
+                                             requests_per_second=requests_per_second)
+    rps = len(responses) / (timestamps[-1][1] - timestamps[0][0])
+    assert rps / requests_per_second >= latency_threshold
 
 
-def test_http_loadtest_patch(test_url: str, load_test: LoadTest):
-    message = HttpRequest(method='PATCH', data={'key': 'value'})
-    rps = 25
-    result = load_test.run(test_url,
-                           messages=[message] * 100,
-                           requests_per_second=rps)
-    assert result.metrics.server_requests_per_second / rps > 0.85
-
-
-def test_http_loadtest_delete(test_url: str, load_test: LoadTest):
-    message = HttpRequest(method='DELETE', data={'key': 'value'})
-    rps = 25
-    result = load_test.run(test_url,
-                           messages=[message] * 100,
-                           requests_per_second=rps)
-    assert result.metrics.server_requests_per_second / rps > 0.85
+@pytest.mark.parametrize('method', ('POST', 'PUT', 'PATCH', 'DELETE'))
+def test_load_with_body(method,
+                        body_request,
+                        num_requests,
+                        requests_per_second,
+                        latency_threshold,
+                        latency_test: LatencySpamer):
+    request = body_request
+    request.method = method
+    responses, timestamps = latency_test.run(requests=[request] * num_requests,
+                                             requests_per_second=requests_per_second)
+    rps = len(responses) / (timestamps[-1][1] - timestamps[0][0])
+    assert rps / requests_per_second >= latency_threshold
