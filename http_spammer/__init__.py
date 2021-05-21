@@ -49,7 +49,7 @@ url_pattern = "(https?:\/\/(?:www\.|(?!www))[a-zA-Z0-9][a-zA-Z0-9-]+[a-zA-Z0-9]"
 
 
 def validate_test_config(config: TestConfig):
-    if config.numClients >= cpu_count() - 1:
+    if config.numClients > cpu_count() - 1:
         raise RuntimeError(f'numClient exceeds available cpus ({cpu_count()})')
     max_rps = max([max(seg.startRps, seg.endRps) / config.numClients
                    for seg in config.segments])
