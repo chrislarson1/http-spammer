@@ -51,6 +51,6 @@ setup(
     classifiers=[
         'Intended Audience :: Developers',
         'Programming Language :: Python :: 3',
-        'Topic :: Scientific/Engineering :: Networking Tools',
+        'Topic :: Software Development :: Testing :: Traffic Generation',
     ]
 )
