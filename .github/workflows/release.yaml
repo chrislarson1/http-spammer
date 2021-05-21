@@ -39,14 +39,14 @@ jobs:
           pip install twine --upgrade
           pip install -r requirements.txt
           python setup.py sdist
-      - name: Publish package to TestPyPI
+      # - name: Publish package to TestPyPI
+      #   uses: pypa/gh-action-pypi-publish@master
+      #   with:
+      #     user: __token__
+      #     password: ${{ secrets.TEST_PYPI_API_TOKEN_HTTP_SPAMMER }}
+      #     repository_url: https://test.pypi.org/legacy/
+      - name: Publish a Python distribution to PyPI
         uses: pypa/gh-action-pypi-publish@master
         with:
           user: __token__
-          password: ${{ secrets.TEST_PYPI_API_TOKEN_HTTP_SPAMMER }}
-          repository_url: https://test.pypi.org/legacy/
-#      - name: Publish a Python distribution to PyPI
-#        uses: pypa/gh-action-pypi-publish@master
-#        with:
-#          user: __token__
-#          password: ${{ secrets.PYPI_API_TOKEN }}
+          password: ${{ secrets.PYPI_API_TOKEN_HTTP_SPAMMER }}
