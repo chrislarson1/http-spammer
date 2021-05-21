@@ -18,7 +18,9 @@ from http_spammer import LoadTest
 
 def test_loadtest(test_file, latency_threshold):
     load_test = LoadTest(test_file)
-    results = load_test.run()
+    results = []
+    for result in load_test.run():
+        results.append(result)
     assert len(results) == len(load_test.config.segments)
     for result in results:
         assert result.metrics.server_requests_per_second / \

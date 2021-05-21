@@ -86,13 +86,9 @@ class LoadTest:
             N = int(((segment.startRps + segment.endRps) / 2) * segment.duration)
             segment_requests.append(
                 np.random.choice(self.config.requests, size=N).tolist())
-        results = []
         for segment, requests in zip(self.config.segments, segment_requests):
-            results.append(
-                spam_runner(self.config.numClients,
-                            requests,
-                            segment.duration,
-                            segment.startRps,
-                            segment.endRps)
-            )
-        return results
+            yield spam_runner(self.config.numClients,
+                              requests,
+                              segment.duration,
+                              segment.startRps,
+                              segment.endRps)
