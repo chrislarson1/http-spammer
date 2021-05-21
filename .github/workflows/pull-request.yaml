@@ -23,4 +23,4 @@ jobs:
         pip install . --user
     - name: Test with pytest
       run: |
-        ./tests/pytest.sh
+        pytest tests/
