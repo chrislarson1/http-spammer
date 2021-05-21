@@ -52,15 +52,15 @@ def latency_threshold():
 
 @pytest.fixture(autouse=True)
 def num_workers():
-    return 3
+    return 1
 
 
-@pytest.fixture(autouse=True)
+@pytest.fixture(autouse=False)
 def load_spammer():
     return LoadSpammer()
 
 
-@pytest.fixture(autouse=True)
+@pytest.fixture(autouse=False)
 def latency_spammer():
     return LatencySpammer()
 
@@ -80,18 +80,18 @@ def test_file_url():
     return 'https://raw.githubusercontent.com/chrislarson1/http-spammer/main/tests/test-config.yaml'
 
 
-@pytest.fixture(autouse=True)
+@pytest.fixture(autouse=False)
 def test_config(test_file):
     return TestConfig(**load_from_file(test_file))
 
 
-@pytest.fixture(autouse=True)
+@pytest.fixture(autouse=False)
 def get_request(test_url):
     return GetRequest(url=test_url,
                       headers={'Content-type': 'text/plain'})
 
 
-@pytest.fixture(autouse=True)
+@pytest.fixture(autouse=False)
 def body_request(test_url):
     return BodyRequest(url=test_url,
                        headers={'Content-type': 'application/json'},
