@@ -81,8 +81,13 @@ def test_file_url():
 
 
 @pytest.fixture(autouse=False)
-def test_config(test_file):
-    return TestConfig(**load_from_file(test_file))
+def test_config_dict(test_file):
+    return load_from_file(test_file)
+
+
+@pytest.fixture(autouse=False)
+def test_config(test_config_dict):
+    return TestConfig(**test_config_dict)
 
 
 @pytest.fixture(autouse=False)

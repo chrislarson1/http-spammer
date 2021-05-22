@@ -15,7 +15,7 @@
 # -------------------------------------------------------------------
 import re
 import yaml
-from typing import List, Union
+from typing import List, Union, Generator
 from multiprocessing import cpu_count
 
 import requests
@@ -27,6 +27,8 @@ from http_spammer.contraints import MAX_WRKR_RPS, MIN_RPS, \
     MIN_SEG_DUR, MIN_SEG_REQ
 from http_spammer.worker import spam_runner, LAT_RPS
 from http_spammer.metrics import LoadTestResult
+
+__all__ = ['TestConfig', 'LoadTest']
 
 
 class SegmentType(BaseModel):
@@ -48,6 +50,14 @@ url_pattern = "(https?:\/\/(?:www\.|(?!www))[a-zA-Z0-9][a-zA-Z0-9-]+[a-zA-Z0-9]"
               ":\/\/(?:www\.|(?!www))[a-zA-Z0-9]+\.[^\s]{2,}|www\.[a-zA-Z0-9]+\.[^\s]{2,})"
 
 
+def load_from_file(fp: str):
+    return yaml.load(open(fp, 'r'), Loader=yaml.FullLoader)
+
+
+def load_from_url(url: str):
+    return yaml.load(requests.get(url).text, Loader=yaml.FullLoader)
+
+
 def validate_test_config(config: TestConfig):
     if config.numClients > cpu_count() - 1:
         raise RuntimeError(f'numClient exceeds available cpus '
@@ -61,26 +71,28 @@ def validate_test_config(config: TestConfig):
         raise RuntimeError(f'segment duration must be >= {MIN_SEG_DUR})')
 
 
-def load_from_file(fp: str):
-    return yaml.load(open(fp, 'r'), Loader=yaml.FullLoader)
-
-
-def load_from_url(url: str):
-    return yaml.load(requests.get(url).text, Loader=yaml.FullLoader)
+def parse_constructor_args(test_spec):
+    if type(test_spec) == str:
+        is_url = re.match(url_pattern, test_spec)
+        if is_url:
+            test_spec = load_from_url(test_spec)
+        else:
+            test_spec = load_from_file(test_spec)
+    if type(test_spec) == dict:
+        config = TestConfig(**test_spec)
+    else:
+        assert isinstance(test_spec, TestConfig)
+        config = test_spec
+    validate_test_config(config)
+    return config
 
 
 class LoadTest:
 
-    def __init__(self, test_file_or_url: str):
-        is_url = re.match(url_pattern, test_file_or_url)
-        if is_url:
-            spec = load_from_url(test_file_or_url)
-        else:
-            spec = load_from_file(test_file_or_url)
-        self.config = TestConfig(**spec)
-        validate_test_config(self.config)
+    def __init__(self, test_spec: Union[str, dict, TestConfig]):
+        self.config = parse_constructor_args(test_spec)
 
-    def run(self) -> List[LoadTestResult]:
+    def run(self) -> Generator[LoadTestResult, None, None]:
         segment_requests = []
         for segment in self.config.segments:
             N = int(((segment.startRps + segment.endRps) / 2) * segment.duration)

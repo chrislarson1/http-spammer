@@ -13,11 +13,20 @@
 # implied. See the License for the specific language governing
 # permissions and limitations under the License.
 # -------------------------------------------------------------------
-from http_spammer import LoadTest
+from http_spammer import LoadTest, TestConfig, parse_constructor_args
 
 
-def test_loadtest(test_file, latency_threshold):
-    load_test = LoadTest(test_file)
+def test_loadtest_constructor(test_file, test_config_dict, test_config):
+    config = parse_constructor_args(test_file)
+    assert isinstance(config, TestConfig)
+    config = parse_constructor_args(test_config_dict)
+    assert isinstance(config, TestConfig)
+    config = parse_constructor_args(test_config)
+    assert isinstance(config, TestConfig)
+
+
+def test_loadtest_from_spec(test_config, latency_threshold):
+    load_test = LoadTest(test_config)
     results = []
     for result in load_test.run():
         results.append(result)
