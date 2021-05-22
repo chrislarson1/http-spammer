@@ -13,14 +13,13 @@
 # implied. See the License for the specific language governing
 # permissions and limitations under the License.
 # -------------------------------------------------------------------
-
 from io import open
 from setuptools import setup, find_packages
 
 
 setup(
     name="http-spammer",
-    version="0.1.1-rc1",
+    version="0.1.1-rc2",
     author="Chris Larson",
     author_email="chris7larson@gmail.com",
     description="asyncronous http load testing tool",
