@@ -19,7 +19,7 @@ from setuptools import setup, find_packages
 
 setup(
     name="http-spammer",
-    version="0.1.1-rc3",
+    version="0.1.1-rc4",
     author="Chris Larson",
     author_email="chris7larson@gmail.com",
     description="asyncronous http load testing tool",
