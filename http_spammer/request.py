@@ -15,7 +15,7 @@
 # -------------------------------------------------------------------
 from enum import Enum
 from pydantic import BaseModel
-from typing import Dict, List, Union
+from typing import Dict, Union
 
 import requests as Requests
 
@@ -50,7 +50,7 @@ class BaseRequest(BaseModel):
     headers: Dict[str, str] = None
     params: Dict[str, str] = None
     verify: bool = False
-    timeouts: List[float] = None
+    timeout: float = 5.0
 
 
 class GetRequest(BaseRequest):

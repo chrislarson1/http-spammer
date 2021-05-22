@@ -74,11 +74,9 @@ class LoadSpammer(Spammer):
         self.loop.close()
 
     async def __send(self, request: Union[GetRequest, BodyRequest]):
-        if request.timeouts:
-            request.timeouts = Timeouts(sock_connect=request.timeouts[0],
-                                        sock_read=request.timeouts[1])
         args = request.dict()
         args.pop('method')
+        args['timeouts'] = Timeouts(sock_read=args.pop('timeout'))
         task = LoadTestTask()
         try:
             task.start_time = now()
@@ -132,7 +130,6 @@ class LatencySpammer(Spammer):
             request = requests.pop()
             args = request.dict()
             args.pop('method')
-            args['timeout'] = args.pop('timeouts')
             while throttle(t, len(tasks), duration, rps_start, rps_end):
                 time.sleep(CLOCK)
             task = LoadTestTask()

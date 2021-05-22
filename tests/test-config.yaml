@@ -22,3 +22,4 @@ requests:
       Content-type: "application/json"
     data:
       foo: "bar"
+    timeout: 3.0
