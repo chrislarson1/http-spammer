@@ -15,7 +15,7 @@
 # -------------------------------------------------------------------
 import re
 import yaml
-from typing import List, Union, Generator
+from typing import List, Tuple, Union, Generator
 from multiprocessing import cpu_count
 
 import requests
@@ -93,15 +93,17 @@ class LoadTest:
     def __init__(self, test_spec: Union[str, dict, TestConfig]):
         self.config = parse_constructor_args(test_spec)
 
-    def run(self) -> Generator[LoadTestResult, None, None]:
+    def run(self) -> Generator[Tuple[int, int, LoadTestResult], None, None]:
         segment_requests = []
         for segment in self.config.segments:
             N = int(((segment.startRps + segment.endRps) / 2) * segment.duration)
             segment_requests.append(
                 np.random.choice(self.config.requests, size=N).tolist())
-        for segment, requests in zip(self.config.segments, segment_requests):
-            yield spam_runner(self.config.numClients,
-                              requests,
-                              segment.duration,
-                              segment.startRps,
-                              segment.endRps)
+        for cycle in range(self.config.cycles):
+            for segnum, (segment, requests) in enumerate(
+                    zip(self.config.segments, segment_requests)):
+                yield cycle, segnum, spam_runner(self.config.numClients,
+                                                 requests,
+                                                 segment.duration,
+                                                 segment.startRps,
+                                                 segment.endRps)

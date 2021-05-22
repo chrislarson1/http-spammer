@@ -31,7 +31,7 @@ def test_loadtest_from_spec(test_config, latency_threshold):
     for result in load_test.run():
         results.append(result)
     assert len(results) == len(load_test.config.segments)
-    for result in results:
+    for (cycle, segment, result) in results:
         assert result.metrics.server_requests_per_second / \
                result.metrics.client_requests_per_second >= \
                latency_threshold
