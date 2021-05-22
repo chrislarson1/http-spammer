@@ -60,7 +60,7 @@ def load_from_url(url: str):
 
 
 def validate_test_config(config: TestConfig):
-    if config.numClients > cpu_count() - 2:
+    if config.numClients > cpu_count() - 1:
         raise RuntimeError(f'numClient exceeds available cpus '
                            f'({config.numClients} vs. {cpu_count()})')
     max_rps = max([max(seg.startRps, seg.endRps) / config.numClients
