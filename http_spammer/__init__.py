@@ -28,7 +28,8 @@ from http_spammer.contraints import MAX_WRKR_RPS, MIN_RPS, \
 from http_spammer.worker import spam_runner, LAT_RPS
 from http_spammer.metrics import LoadTestResult
 
-__all__ = ['TestConfig', 'LoadTest']
+__all__ = ['TestConfig', 'LoadTest', 'LoadTestResult',
+           'load_from_file', 'load_from_url']
 
 
 class SegmentType(BaseModel):
@@ -59,7 +60,7 @@ def load_from_url(url: str):
 
 
 def validate_test_config(config: TestConfig):
-    if config.numClients > cpu_count() - 1:
+    if config.numClients > cpu_count() - 2:
         raise RuntimeError(f'numClient exceeds available cpus '
                            f'({config.numClients} vs. {cpu_count()})')
     max_rps = max([max(seg.startRps, seg.endRps) / config.numClients

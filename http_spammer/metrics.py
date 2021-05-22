@@ -14,7 +14,7 @@
 # permissions and limitations under the License.
 # -------------------------------------------------------------------
 from dataclasses import dataclass, asdict
-from typing import List
+from typing import List, Union
 
 import numpy as np
 
@@ -37,6 +37,8 @@ class LoadTestMetrics:
     server_latency_p90_seconds: float
     server_latency_p95_seconds: float
     server_latency_p99_seconds: float
+    server_latency_p99p9_seconds: float
+    server_latency_p99p99_seconds: float
 
     def dict(self):
         return asdict(self)
@@ -65,7 +67,9 @@ class LoadTestMetrics:
             server_latency_p50_seconds=round(np.percentile(latencies, 50), 9),
             server_latency_p90_seconds=round(np.percentile(latencies, 90), 9),
             server_latency_p95_seconds=round(np.percentile(latencies, 95), 9),
-            server_latency_p99_seconds=round(np.percentile(latencies, 99), 9)
+            server_latency_p99_seconds=round(np.percentile(latencies, 99), 9),
+            server_latency_p99p9_seconds=round(np.percentile(latencies, 99.9), 9),
+            server_latency_p99p99_seconds=round(np.percentile(latencies, 99.99), 9)
         )
 
 
@@ -79,7 +83,7 @@ class LoadTestResult:
     @classmethod
     def build(cls, metrics, responses):
         num_errors = len([resp for resp in responses
-                          if isinstance(resp, Exception)])
+                          if isinstance(resp, (Exception, str))])
         return cls(metrics=metrics,
                    responses=responses,
                    num_errors=num_errors)
@@ -87,8 +91,8 @@ class LoadTestResult:
     def dict(self):
         _dict = {
             'metrics': asdict(self.metrics),
-            'num_errors': self.num_errors,
-            'responses': self.responses
+            'responses': self.responses,
+            'num_errors': self.num_errors
         }
         return _dict
 
@@ -101,7 +105,7 @@ class LoadTestResult:
                    num_errors=result_dict['num_errors'])
 
 
-def get_result(responses: List[dict],
+def get_result(responses: List[Union[dict, str]],
                timestamps: List[Timestamp],
                latency_timestamps: List[Timestamp]):
     metrics = LoadTestMetrics.build(timestamps,

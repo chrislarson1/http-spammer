@@ -31,7 +31,7 @@ __all__ = ['LoadSpammer', 'LatencySpammer']
 class LoadTestTask:
     start_time: float
     end_time: float
-    response: Union[asyncio.Future, dict]
+    response: Union[asyncio.Future, dict, None] = None
 
 
 def throttle(start_t, index, duration, rps_start, rps_end):
@@ -74,16 +74,22 @@ class LoadSpammer(Spammer):
         self.loop.close()
 
     async def __send(self, request: Union[GetRequest, BodyRequest]):
-        task = LoadTestTask()
-        task.start_time = now()
         if request.timeouts:
             request.timeouts = Timeouts(sock_connect=request.timeouts[0],
                                         sock_read=request.timeouts[1])
         args = request.dict()
         args.pop('method')
-        response = await self.methods[request.method.lower()](**args)
-        task.response = json.loads(await response.content())
+        task = LoadTestTask()
+        try:
+            task.start_time = now()
+            response = await (
+                await self.methods[request.method.lower()](**args)
+            ).content()
+        except Exception as exc:
+            task.response = exc
         task.end_time = now()
+        if task.response is None:
+            task.response = json.loads(response)
         self._tasks.append(task)
 
     def __flush(self, n_requests: int):
@@ -109,10 +115,11 @@ class LoadSpammer(Spammer):
         self.loop.run_until_complete(
             asyncio.ensure_future(
                 self.__run_async(requests, duration, rps_start, rps_end)))
-        responses, timestamps = zip(*sorted(
-            [(task.response, (task.start_time, task.end_time))
-             for task in self._tasks],
-            key=lambda tup: tup[1][0]))
+        responses, timestamps = zip(
+            *sorted([(task.response, (task.start_time, task.end_time))
+                     for task in self._tasks],
+                    key=lambda tup: tup[1][0])
+        )
         return responses, timestamps
 
 
@@ -123,16 +130,20 @@ class LatencySpammer(Spammer):
         tasks = []
         while requests:
             request = requests.pop()
-            task = LoadTestTask()
             args = request.dict()
             args.pop('method')
             args['timeout'] = args.pop('timeouts')
             while throttle(t, len(tasks), duration, rps_start, rps_end):
                 time.sleep(CLOCK)
-            task.start_time = now()
-            response = SYNC_REQUEST_FN[request.method.lower()](**args)
+            task = LoadTestTask()
+            try:
+                task.start_time = now()
+                response = SYNC_REQUEST_FN[request.method.lower()](**args).content
+            except Exception as exc:
+                task.response = exc
             task.end_time = now()
-            task.response = json.loads(response.content)
+            if task.response is None:
+                task.response = json.loads(response)
             tasks.append(task)
         responses, timestamps = zip(*sorted(
             [(task.response, (task.start_time, task.end_time))
