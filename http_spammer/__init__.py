@@ -93,18 +93,54 @@ class LoadTest:
 
     def __init__(self, test_spec: Union[str, dict, TestConfig]):
         self.config = parse_constructor_args(test_spec)
+        self.segments = self.generate_requests()
+
+    def generate_requests(self):
+        requests = []
+        for i, segment in enumerate(self.config.segments):
+            N = int(((segment.startRps + segment.endRps) / 2) * segment.duration)
+            _requests = np.random.choice(self.config.requests, size=N).tolist()
+            rate = (segment.endRps - segment.startRps) / segment.duration
+            end_rps = segment.startRps
+            if rate == 0.:
+                num_subsegs = segment.duration // MIN_SEG_DUR
+                subseg_size = len(_requests) // num_subsegs
+                while _requests:
+                    seg_requests = [_requests.pop() for _ in range(subseg_size)]
+                    duration = MIN_SEG_DUR
+                    num_remaining = len(_requests)
+                    if num_remaining < MIN_SEG_REQ:
+                        duration += duration * (num_remaining / MIN_SEG_REQ)
+                        seg_requests.extend([_requests.pop() for _ in range(len(_requests))])
+                    requests.append((i, seg_requests, end_rps, end_rps, duration))
+            else:
+                while _requests:
+                    start_rps = end_rps
+                    end_rps = start_rps + MIN_SEG_DUR * rate
+                    mean_rps = (end_rps + start_rps) / 2
+                    is_last_subseg = (end_rps > segment.endRps) \
+                        if rate > 0 else (end_rps < segment.endRps)
+                    if not is_last_subseg:
+                        seg_requests = [_requests.pop(0)
+                                        for _ in range(int(MIN_SEG_DUR * mean_rps))]
+                        duration = MIN_SEG_DUR
+                        if len(_requests) < MIN_SEG_REQ:
+                            seg_requests.extend([_requests.pop(0)
+                                                 for _ in range(len(_requests))])
+                            end_rps = segment.endRps
+                            mean_rps = (end_rps + start_rps) / 2
+                            duration = len(seg_requests) / mean_rps
+                    else:
+                        seg_requests = [_requests.pop(0) for _ in range(len(_requests))]
+                        duration = len(seg_requests) / mean_rps
+                    requests.append((i, seg_requests, start_rps, end_rps, duration))
+        return requests
 
     def run(self) -> Generator[Tuple[int, int, LoadTestResult], None, None]:
-        segment_requests = []
-        for segment in self.config.segments:
-            N = int(((segment.startRps + segment.endRps) / 2) * segment.duration)
-            segment_requests.append(
-                np.random.choice(self.config.requests, size=N).tolist())
         for cycle in range(self.config.cycles):
-            for segnum, (segment, requests) in enumerate(
-                    zip(self.config.segments, segment_requests)):
-                yield cycle, segnum, spam_runner(self.config.numClients,
-                                                 copy.deepcopy(requests),
-                                                 segment.duration,
-                                                 segment.startRps,
-                                                 segment.endRps)
+            for segment, requests, start_rps, end_rps, duration in self.segments:
+                yield cycle, segment, spam_runner(self.config.numClients,
+                                                  copy.deepcopy(requests),
+                                                  duration,
+                                                  start_rps,
+                                                  end_rps)
