@@ -15,6 +15,7 @@
 # -------------------------------------------------------------------
 import re
 import yaml
+import copy
 from typing import List, Tuple, Union, Generator
 from multiprocessing import cpu_count
 
@@ -103,7 +104,7 @@ class LoadTest:
             for segnum, (segment, requests) in enumerate(
                     zip(self.config.segments, segment_requests)):
                 yield cycle, segnum, spam_runner(self.config.numClients,
-                                                 requests,
+                                                 copy.deepcopy(requests),
                                                  segment.duration,
                                                  segment.startRps,
                                                  segment.endRps)
