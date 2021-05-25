@@ -53,6 +53,14 @@ class Spammer(ABC):
         pass
 
 
+def decode_http_response(content):
+    if any([content.startswith(b'['),
+            content.startswith(b'{')]):
+        return json.loads(content)
+    else:
+        return content.decode('utf-8')
+
+
 class LoadSpammer(Spammer):
 
     def __init__(self):
@@ -80,14 +88,14 @@ class LoadSpammer(Spammer):
         task = LoadTestTask()
         try:
             task.start_time = now()
-            response = await (
-                await self.methods[request.method.lower()](**args)
-            ).content()
+            response = await self.methods[request.method.lower()](**args)
+            content = await response.content()
         except Exception as exc:
-            task.response = exc
+            task.response = (None, exc)
         task.end_time = now()
         if task.response is None:
-            task.response = json.loads(response)
+            task.response = (response.status_code,
+                             decode_http_response(content))
         self._tasks.append(task)
 
     def __flush(self, n_requests: int):
@@ -135,12 +143,14 @@ class LatencySpammer(Spammer):
             task = LoadTestTask()
             try:
                 task.start_time = now()
-                response = SYNC_REQUEST_FN[request.method.lower()](**args).content
+                response = SYNC_REQUEST_FN[request.method.lower()](**args)
+                content = response.content
             except Exception as exc:
-                task.response = exc
+                task.response = (None, exc)
             task.end_time = now()
             if task.response is None:
-                task.response = json.loads(response)
+                task.response = (response.status_code,
+                                 decode_http_response(content))
             tasks.append(task)
         responses, timestamps = zip(*sorted(
             [(task.response, (task.start_time, task.end_time))

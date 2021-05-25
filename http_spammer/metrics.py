@@ -14,9 +14,10 @@
 # permissions and limitations under the License.
 # -------------------------------------------------------------------
 from dataclasses import dataclass, asdict
-from typing import List, Union
+from typing import List, Union, Tuple
 
 import numpy as np
+from aiosonic import ConnectTimeout, HttpParsingError, TimeoutException
 
 from http_spammer.timing import Timestamp
 
@@ -77,13 +78,13 @@ class LoadTestMetrics:
 class LoadTestResult:
 
     metrics: LoadTestMetrics
-    responses: List[dict]
+    responses: Tuple[int, List[Union[dict, str]]]
     num_errors: int
 
     @classmethod
     def build(cls, metrics, responses):
-        num_errors = len([resp for resp in responses
-                          if isinstance(resp, (Exception, str))])
+        num_errors = sum([1 if (resp[0] is None or resp[0] >= 400)
+                          else 0 for resp in responses])
         return cls(metrics=metrics,
                    responses=responses,
                    num_errors=num_errors)
@@ -105,7 +106,7 @@ class LoadTestResult:
                    num_errors=result_dict['num_errors'])
 
 
-def get_result(responses: List[Union[dict, str]],
+def get_result(responses: List[Tuple[int, Union[dict, str, Exception]]],
                timestamps: List[Timestamp],
                latency_timestamps: List[Timestamp]):
     metrics = LoadTestMetrics.build(timestamps,
